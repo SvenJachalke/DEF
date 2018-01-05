@@ -1,37 +1,28 @@
-#!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 """
-Created on Sat Nov  4 12:25:03 2017
-
-@author: svenjachalke
+Debye-Einstein-Fit:
+Fitting temperature dependent pyroelectric coefficients with a Debye and up to
+six Einstein functions
+Author: Sven Jachalke
+Date: 2017-11-04
 """
 
 from pylab import *
-import pandas as pd
 from tubafcdpy import *
+import pandas as pd
 import lmfit as fit
 from mpmath import polylog
 from numpy import log10
 import warnings
 warnings.filterwarnings("ignore")
 
-#Temperature to cm-1 conversion
-def Temp2cm1(temperature):
-	return temperature*0.695
-
-def cm2Temp(cm):
-	return cm/0.695
-
-#Temperature to eV conversion
-def Temp2eV(temperature):
-	return temperature*8.621738e-5	
-
-#Debye-Einstein-functions
+# Debye-Einstein-functions ----------------------------------------------------
+# non-integral Debye function (Dubinov et al, 2008)
 def debye_non_integral(x):
 	'''
 	Non-Integral function for the Debye Integral
 	(has only to be multiplied with factor A!)
-	x = T_D/T
+	x = T_D/T (Debye temperature and absolute temperature)
 	'''
 	
 	# individual summands of integral replacement
@@ -48,33 +39,39 @@ def debye_non_integral(x):
 
 def Debye(x):
 	'''
-	vectorized function which takes a nested sequence of objects or numpy arrays as inputs and returns an single or tuple of numpy array as output.
+	vectorized function which takes a nested sequence of objects or numpy 
+	arrays as inputs and returns an single or tuple of numpy array as output.
 	'''
 	f =  vectorize(debye_non_integral, otypes=[complex])
 	return f(x).real	
 
+# Einstein function
 def Einstein(T,T_E):
 	'''
-	accoustic contribution of p(T) with Einstein function
+	Einstein function
 	T ... array of temperature range
 	T_E ... Einstein temperature
 	'''
 	return (T_E/T)**2 * ((exp(T_E/T))/(exp(T_E/T)-1)**2)
 
+# Combination of Debye and several Einstein functions with factors
 def Debye_Einstein_Modell(params, T, data=None, n_Einstein=1):
 	'''
-	Debye-Einstein Modell with as non-integral function
-	input: array of temperature
-	       parameters array consisting of A,B,T_D and T_E
-	       number of Einstein contributions
+	Combination of one Debye and several Einstein functions
+	parameteters:
+		params - lmfit ParamsDict with factors and Debye/Einstein temperatures
+		T - numpy array with temperatures
+		data - numpy array with pyroelectric coefficients
+		n_Einstein - number of needed Einstein contributions 
 	'''
 	
-	#DebyePart
+	# DebyePart
 	T_D = params['T_D'].value
 	A = params['A'].value
 	
 	DEM = A*Debye(T_D/T)
 	
+	# add EinsteinPart if needed
 	if n_Einstein != 0:
 		#EinsteinPart
 		for i in range(n_Einstein):
@@ -91,15 +88,44 @@ def Debye_Einstein_Modell(params, T, data=None, n_Einstein=1):
 	else:
 		return DEM-data
 
-# ---------------------------------------------------------------------------------------
+# Conversion functions --------------------------------------------------------
+# Temperature to cm-1 conversion
+def Temp2cm1(temperature):
+	"""
+	converts temperature (K) to wave number (cm^-1)
+	"""
+	return temperature*0.695
+
+# cm-1 to Temperature conversion
+def cm2Temp(cm):
+	"""
+	converters wave number (cm^-1) to temperature (K)
+	"""
+	return cm/0.695
+
+# Temperature to eV conversion
+def Temp2eV(temperature):
+	"""
+	converts temperature (K) to energy (eV)
+	"""
+	return temperature*8.621738e-5	
+
+# -----------------------------------------------------------------------------
+# MAIN
+# -----------------------------------------------------------------------------
 style.use('science')
-fit_flag = True
-name = 'Lines_OwnData_DEM'
+fit_flag = True 				#True - perform fit, False - use defined values
+name = 'Debye-Einstein-Fit' 	#adjust name for plots and log files
 
-# Temperature range----------------------------------------------------------
-T = linspace(1,600,150)
+T_start = 0					#lower limit of temperature range
+T_end = 600					#upper limit of temperature range
+T_step = 150					#temperature steps between low and high
 
-# Start_Parameters ----------------------------------------------------------
+# start parameters
+# column1 = Debye Parameters (factor and Debye temperature)
+# column2 to column 7 = Einstein Parameters (factor and Einstein temperature)
+# vary_factor: True = factor will be fitted, False = factor remains untouched
+# vary_temperatures: True = temperatur will be fitted, False = temperature remains untouched
 
 #Lines:1977 params (only on low T data!) -- use of 2x Einstein without Debye
 #factors = 		[	1e-10,		2.556e-5,		1.4337e-4,	0,			0,			0,		0]
@@ -150,28 +176,29 @@ vary_temperatures =[	True,		True,		False,		False,		False,		False,	False]
 #vary_temperatures =[	False,		False,		False,		False,		False,		False,	False]
 #redX2: 7.405409e-12 --> etwas schlechter
 
+T = linspace(T_start,T_end,T_step)
 
-#Count number of Einsteins defined ... calc total number of modes
-n_Einstein = sum(array(factors)!=0)-1
+n_Einstein = sum(array(factors)!=0)-1	#Count number of Einsteins defined
 n_Debye = 1
-n = n_Einstein+n_Debye
+n = n_Einstein+n_Debye 				#calc total number of modes
 
-# load data -------------------------------------------------------------
-# Shaldin data
-LT_Lines_init = pd.read_csv("LT-LandB-77L2-Lines1977.txt",skiprows=1,names=['temp','p'],delimiter=',',decimal='.')
-LT_Lines_init['p'] = -LT_Lines_init.p
+# load data -------------------------------------------------------------------
+# (has to be adjusted for individual files. This example uses data from the
+# literature and own data. In the end a combined pandas DataFrame is created)
 
-#own data
-LT_init = pd.read_csv("2017-06-27_15-30_LiTaO3-C-LT-F1_SineWave+LinRamp_PyroData.txt",skiprows=1,usecols=[1,2,8],names=['temp','p','perror'],delimiter='\t')
-LT_init['p'] = -LT_init.p #+ 5e-6
+# Literature data
+Lit_data = pd.read_csv("LT-LandB-77L2-Lines1977.txt",skiprows=1,names=['temp','p'],delimiter=',',decimal='.')
+Lit_data['p'] = -abs(Lit_data.p)
+
+# own data
+Own_data = pd.read_csv("2017-06-27_15-30_LiTaO3-C-LT-F1_SineWave+LinRamp_PyroData.txt",skiprows=1,usecols=[1,2,8],names=['temp','p','perror'],delimiter='\t')
+Own_data['p'] = -abs(Own_data.p) #+ 5e-6
 
 # fit combined data set of Shaldin and own data
-#combined = LT_Lines_init
-combined = pd.concat([LT_Lines_init,LT_init])
-combined = combined.sort_values(by=['temp'])
+data = pd.concat([Lit_data,Own_data])
+data = data.sort_values(by=['temp'])
 
-
-# ParametersDicts scaling factors--------------------------------------------
+# Initialize ParametersDicts with scaling factors and temperatures ------------
 Sim = fit.Parameters()
 Sim.add('A', value=factors[0], vary=vary_factors[0])
 Sim.add('T_D', value=temperatures[0], vary=vary_temperatures[0],min=0)
@@ -194,26 +221,24 @@ if n_Einstein >= 6:
 	Sim.add('B6', value=factors[6], vary=vary_factors[6],min=0)
 	Sim.add('T_E6', value=temperatures[6], vary=vary_temperatures[6],min=0)
 
-# -------------------------------------------------------------
-# fit of third contribution
+# -----------------------------------------------------------------------------
+# fitting
 if fit_flag == True:
-	result = fit.minimize(Debye_Einstein_Modell, Sim, args=(abs(combined.temp), abs(combined.p), n_Einstein))
+	result = fit.minimize(Debye_Einstein_Modell, Sim, args=(abs(data.temp), abs(data.p), n_Einstein))
 	fitted_params = result.params
 	print('red X2: %e'%result.redchi)
 else:
 	fitted_params = Sim
 
-
-
-#plotting ----------------------------------------------------
+# plotting --------------------------------------------------------------------
 f = figure('Shaldin',figsize=(8,6))
 ax = f.add_subplot(111)
 
 # experimental data
-ax.plot(LT_Lines_init.temp,LT_Lines_init.p*1e6,color=tubafblue(),linestyle='',marker='o',label=r'\textsc{Lines} \textit{et al.}, Phys. Rev. Lett., Vol. 39(21), pp. 1362--1365, 1977')
+ax.plot(Lit_data.temp,Lit_data.p*1e6,color=tubafblue(),linestyle='',marker='o',label=r'\textsc{Lines} \textit{et al.}, Phys. Rev. Lett., Vol. 39(21), pp. 1362--1365, 1977')
 #ax.plot(LN_Shaldin_air.temp,LN_Shaldin_air.p*1e6,color=tubafred(),linestyle='',marker='o',label='Shaldin2008 - air (1000 K, 7h)')
 #ax.plot(LN_init.temp,LN_init.p*1e6,color=tubafgreen(),linestyle='',marker='o',label='own data ($+\SI{5}{\micro\coulomb\per\kelvin\per\square\meter}$)')
-ax.plot(LT_init.temp,LT_init.p*1e6,color=tubafgreen(),linestyle='',marker='o',label='own data')
+ax.plot(Own_data.temp,Own_data.p*1e6,color=tubafgreen(),linestyle='',marker='o',label='own data')
 
 # plot contributions
 for i in range(n):
@@ -257,9 +282,8 @@ ax.plot(T,-p_simulation*1e6,label=r'complete fit',color='k')
 ax.legend(loc=3)
 ax.grid()
 ax.set_xlabel(r'$T$ (K)')
-ax.set_ylabel(r'$p$ (\si{\micro\coulomb\per\kelvin\per\square\meter}})')
+ax.set_ylabel(r'$p$ (\si{\micro\coulomb\per\kelvin\per\square\meter})')
 ax.set_ylim(-450,0)
 
 f.tight_layout()
 f.savefig(name+'.pdf')
-

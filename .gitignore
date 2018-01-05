@@ -1,5 +1,8 @@
 .DS_Store
 
+# File for Dissertation
+DEF-DissCode.py
+
 # Compiled python modules.
 *.pyc
 
