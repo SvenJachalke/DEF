@@ -14,3 +14,4 @@ Depedencies
 - numpy (http://www.numpy.org)
 - pandas (http://pandas.pydata.org)
 - mpmath (http://mpmath.org)
+- matplotlib (https://matplotlib.org)
