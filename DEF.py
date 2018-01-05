@@ -127,54 +127,11 @@ T_step = 150					#temperature steps between low and high
 # vary_factor: True = factor will be fitted, False = factor remains untouched
 # vary_temperatures: True = temperatur will be fitted, False = temperature remains untouched
 
-#Lines:1977 params (only on low T data!) -- use of 2x Einstein without Debye
-#factors = 		[	1e-10,		2.556e-5,		1.4337e-4,	0,			0,			0,		0]
-#temperatures = 	[	0.1,			116.54,		313.669,		0,			0,			0,		0]
-#vary_factors =	[	False,		True,		True,		False,		False,		False,	False]
-#vary_temperatures =[	False,		False,		False,		False,		False,		False,	False]
-#redX2: 5.061385e-11
-
 ##1x Einstein 
 factors = 		[	1.4755e-4,	7.42261e-4,	0,			0,			0,			0,		0]
 temperatures = 	[	339.061,		2030,71,		0,			0,			0,			0,		0]
 vary_factors =	[	True,		True,		False,		False,		False,		False,	False]
 vary_temperatures =[	True,		True,		False,		False,		False,		False,	False]
-##redX2: 4.481420e-12 --> T_D näher an CV Daten!
-
-##1x Einstein mit ThomasDaten
-#factors = 		[	1.563e-4,		8.90189e-4,	0,			0,			0,			0,		0]
-#temperatures = 	[	358.969,		2189.93,		0,			0,			0,			0,		0]
-#vary_factors =	[	True,		True,		False,		False,		False,		False,	False]
-#vary_temperatures =[	True,		False,		False,		False,		False,		False,	False]
-##redX2: 7.405409e-12 --> etwas schlechter
-
-#1x Einstein mit 1522cm und mittlerer Debye-Temperatur aus Literatur (451K)
-#factors = 		[	1.563e-4,		8.36e-4,		0,			0,			0,			0,		0]
-#temperatures = 	[	451,			2189.93,		0,			0,			0,			0,		0]
-#vary_factors =	[	True,		True,		True,		False,		False,		False,	False]
-#vary_temperatures =[	False,		False,		False,		False,		False,		False,	False]
-#redX2: 7.405409e-12 --> etwas schlechter
-
-#2x Einstein 
-#factors = 		[	3.996e-4,		7.396e-4,		1.071e-4,			0,			0,			0,		0]
-#temperatures = 	[	214.18,		2026,33,		286.31,			0,			0,			0,		0]
-#vary_factors =	[	True,		True,		True,		False,		False,		False,	False]
-#vary_temperatures =[	True,		True,		True,		False,		False,		False,	False]
-#redX2: 4.541127e-12
-
-#2x Einstein mit ThomasDaten -- 1755cm-1 Bande sinnlos!
-#factors = 		[	1.563e-4,		8.90189e-4,	5.6997e-10,			0,			0,			0,		0]
-#temperatures = 	[	358.969,		2189.93,		2525.17,			0,			0,			0,		0]
-#vary_factors =	[	True,		True,		True,		False,		False,		False,	False]
-#vary_temperatures =[	False,		False,		False,		False,		False,		False,	False]
-#redX2: 7.405409e-12 --> etwas schlechter
-
-#2x Einstein mit ThomasDaten -- 600cm-1 Bande sinnlos!
-#factors = 		[	1.563e-4,		1e-4,		8.90189e-4,			0,			0,			0,		0]
-#temperatures = 	[	287.76,		863.3,		2189.93,			0,			0,			0,		0]
-#vary_factors =	[	True,		True,		True,		False,		False,		False,	False]
-#vary_temperatures =[	False,		False,		False,		False,		False,		False,	False]
-#redX2: 7.405409e-12 --> etwas schlechter
 
 T = linspace(T_start,T_end,T_step)
 
@@ -187,11 +144,11 @@ n = n_Einstein+n_Debye 				#calc total number of modes
 # literature and own data. In the end a combined pandas DataFrame is created)
 
 # Literature data
-Lit_data = pd.read_csv("LT-LandB-77L2-Lines1977.txt",skiprows=1,names=['temp','p'],delimiter=',',decimal='.')
+Lit_data = pd.read_csv("ExampleData/LT-LandB-77L2-Lines1977.txt",skiprows=1,names=['temp','p'],delimiter=',',decimal='.')
 Lit_data['p'] = -abs(Lit_data.p)
 
 # own data
-Own_data = pd.read_csv("2017-06-27_15-30_LiTaO3-C-LT-F1_SineWave+LinRamp_PyroData.txt",skiprows=1,usecols=[1,2,8],names=['temp','p','perror'],delimiter='\t')
+Own_data = pd.read_csv("ExampleData/2017-06-27_15-30_LiTaO3-C-LT-F1_SineWave+LinRamp_PyroData.txt",skiprows=1,usecols=[1,2,8],names=['temp','p','perror'],delimiter='\t')
 Own_data['p'] = -abs(Own_data.p) #+ 5e-6
 
 # fit combined data set of Shaldin and own data
@@ -236,8 +193,6 @@ ax = f.add_subplot(111)
 
 # experimental data
 ax.plot(Lit_data.temp,Lit_data.p*1e6,color=tubafblue(),linestyle='',marker='o',label=r'\textsc{Lines} \textit{et al.}, Phys. Rev. Lett., Vol. 39(21), pp. 1362--1365, 1977')
-#ax.plot(LN_Shaldin_air.temp,LN_Shaldin_air.p*1e6,color=tubafred(),linestyle='',marker='o',label='Shaldin2008 - air (1000 K, 7h)')
-#ax.plot(LN_init.temp,LN_init.p*1e6,color=tubafgreen(),linestyle='',marker='o',label='own data ($+\SI{5}{\micro\coulomb\per\kelvin\per\square\meter}$)')
 ax.plot(Own_data.temp,Own_data.p*1e6,color=tubafgreen(),linestyle='',marker='o',label='own data')
 
 # plot contributions
@@ -245,6 +200,7 @@ for i in range(n):
 	# calculate simulated p --------------------------------------------------
 	p_simulation = Debye_Einstein_Modell(fitted_params,T,data=None,n_Einstein=i)-fitted_params['A'].value*Debye(fitted_params['T_D']/T)
 	
+	# plot and labels for each contribution
 	if i==0:
 		p_simulation = Debye_Einstein_Modell(fitted_params,T,data=None,n_Einstein=i)
 		B = ('%.2e'%fitted_params['A']).split('e-')
@@ -278,12 +234,14 @@ for i in range(n):
 # plot complete fit
 p_simulation = Debye_Einstein_Modell(fitted_params,T,data=None,n_Einstein=n_Einstein)
 ax.plot(T,-p_simulation*1e6,label=r'complete fit',color='k')
-	
+
+# plot adjustments
 ax.legend(loc=3)
 ax.grid()
 ax.set_xlabel(r'$T$ (K)')
 ax.set_ylabel(r'$p$ (\si{\micro\coulomb\per\kelvin\per\square\meter})')
 ax.set_ylim(-450,0)
 
+# figure layout and saving
 f.tight_layout()
 f.savefig(name+'.pdf')
